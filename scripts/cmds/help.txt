@@ -1,0 +1,143 @@
+//const { commands, aliases } = global.GoatBot;
+
+// --- Fonction pour transformer un texte en style 𝑨𝒁 ---
+//function toAZStyle(text) {
+  const azMap = {
+    A:'𝑨', B:'𝑩', C:'𝑪', D:'𝑫', E:'𝑬', F:'𝑭', G:'𝑮', H:'𝑯', I:'𝑰', J:'𝑱',
+    K:'𝑲', L:'𝑳', M:'𝑴', N:'𝑵', O:'𝑶', P:'𝑷', Q:'𝑸', R:'𝑹', S:'𝑺', T:'𝑻',
+    U:'𝑼', V:'𝑽', W:'𝑾', X:'𝑿', Y:'𝒀', Z:'𝒁',
+    a:'𝒂', b:'𝒃', c:'𝒄', d:'𝒅', e:'𝒆', f:'𝒇', g:'𝒈', h:'𝒉', i:'𝒊', j:'𝒋',
+    k:'𝒌', l:'𝒍', m:'𝒎', n:'𝒏', o:'𝒐', p:'𝒑', q:'𝒒', r:'𝒓', s:'𝒔', t:'𝒕',
+    u:'𝒖', v:'𝒗', w:'𝒘', x:'𝒙', y:'𝒚', z:'𝒛',
+    '0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9',
+    ' ':' '
+  };
+  return text.split('').map(c => azMap[c] || c).join('');
+}
+
+// --- NEW: Bold Font Style Function ---
+function toBold(text) {
+  const boldMap = {
+    A:'𝗔', B:'𝗕', C:'𝗖', D:'𝗗', E:'𝗘', F:'𝗙', G:'𝗚', H:'𝗛', I:'𝗜', J:'𝗝',
+    K:'𝗞', L:'𝗟', M:'𝗠', N:'𝗡', O:'𝗢', P:'𝗣', Q:'𝗤', R:'𝗥', S:'𝗦', T:'𝗧',
+    U:'𝗨', V:'𝗩', W:'𝗪', X:'𝗫', Y:'𝗬', Z:'𝗭',
+    a:'𝗮', b:'𝗯', c:'𝗰', d:'𝗱', e:'𝗲', f:'𝗳', g:'𝗴', h:'𝗵', i:'𝗶', j:'𝗷',
+    k:'𝗸', l:'𝗹', m:'𝗺', n:'𝗻', o:'𝗼', p:'𝗽', q:'𝗾', r:'𝗿', s:'𝘀', t:'𝘁',
+    u:'𝘂', v:'𝘃', w:'𝘄', x:'𝘅', y:'𝘆', z:'𝘇',
+    '0':'𝟬','1':'𝟭','2':'𝟮','3':'𝟯','4':'𝟰','5':'𝟱','6':'𝟲','7':'𝟳','8':'𝟴','9':'𝟵',
+    ' ':' '
+  };
+  return text.split('').map(c => boldMap[c] || c).join('');
+}
+
+module.exports = {
+  config: {
+    name: "help",
+    version: "5.2",
+    author: "Kyle",
+    countDown: 2,
+    role: 0,
+    shortDescription: { en: "𝐸𝑥𝑝𝑙𝑜𝑟𝑒 𝑎𝑙𝑙 𝑏𝑜𝑡 𝑐𝑜𝑚𝑚𝑎𝑛𝑑𝑠" },
+    category: "info",
+    guide: { en: "help <command> — 𝐠𝐞𝐭 𝐜𝐨𝐦𝐦𝐚𝐧𝐝 𝐢𝐧𝐟𝐨, -ai 𝐟𝐨𝐫 𝐬𝐦𝐚𝐫𝐭 𝐬𝐮𝐠𝐠𝐞𝐬𝐭𝐢𝐨𝐧𝐬" },
+  },
+
+  onStart: async function ({ message, args, event, usersData }) {
+    try {
+      const uid = event.senderID;
+      let avatar = await usersData.getAvatarUrl(uid).catch(() => null);
+      if (!avatar) avatar = "https://i.imgur.com/TPHk4Qu.png";
+
+      // —————— Bold Mode Detection ——————
+      const boldMode = args.includes("-b");
+      if (boldMode) args = args.filter(a => a !== "-b");
+
+      const B = boldMode ? toBold : (t)=>t;
+
+      // --- AI Suggestion ---
+      if(args[0]?.toLowerCase() === "-ai") {
+        const keyword = args[1]?.toLowerCase() || "";
+        const allCmds = Array.from(commands.keys());
+        const suggestions = allCmds
+          .map(cmd => ({ cmd, match: Math.max(40, 100 - Math.abs(cmd.length - keyword.length) * 10) }))
+          .filter(c => c.cmd.includes(keyword))
+          .sort((a,b)=>b.match - a.match)
+          .slice(0,10);
+
+        if(!suggestions.length) {
+          return message.reply({ 
+            body:"❌ No suggestions found.", 
+            attachment: await global.utils.getStreamFromURL(avatar)
+          });
+        }
+
+        const body = [
+          "🤖 AI Suggestions:",
+          ...suggestions.map(s=>`• ${B(toAZStyle(s.cmd))} (${s.match}% match)`)
+        ].join("\n");
+
+        return message.reply({ body, attachment: await global.utils.getStreamFromURL(avatar) });
+      }
+
+      // --- Command List ---
+      if(!args || args.length === 0) {
+        let body = `${B("📚 GOAT BOT COMMANDS")}\n\n`;
+        const categories = {};
+
+        for(let [name, cmd] of commands) {
+          const cat = cmd.config.category || "Misc";
+          if(!categories[cat]) categories[cat] = [];
+          categories[cat].push(name);
+        }
+
+        for(const cat of Object.keys(categories).sort()) {
+          const list = categories[cat].sort().map(c=>`• ${B(toAZStyle(c))}`).join("  ");
+          body += `✨ ${B(cat)}\n${list || "No commands"}\n\n`;
+        }
+
+        body += `📊 Total Commands: ${commands.size}\n`;
+        body += `🔧 Command Info: •help <command>\n`;
+        body += `🔍 Search: •help -s <keyword>\n`;
+        body += `🤖 AI Suggest: •help -ai <command>\n`;
+        body += `✨ Bold Mode: •help -b <command>\n`;
+        body += `\n❖Kyle's ChatBot❖\n`;
+
+        return message.reply({ body, attachment: await global.utils.getStreamFromURL(avatar)});
+      }
+
+      // --- Command Info ---
+      const query = args[0].toLowerCase();
+      const command = commands.get(query) || commands.get(aliases.get(query));
+
+      if(!command) {
+        return message.reply({ 
+          body:`❌ Command "${query}" not found.`,
+          attachment: await global.utils.getStreamFromURL(avatar)
+        });
+      }
+
+      const cfg = command.config || {};
+      const roleMap = {0:"All Users",1:"Group Admins",2:"Bot Admins"};
+      const aliasesList = Array.isArray(cfg.aliases) && cfg.aliases.length ? cfg.aliases.map(a=>B(toAZStyle(a))).join(", ") : "None";
+      const desc = cfg.longDescription?.en || cfg.shortDescription?.en || "No description.";
+      const usage = cfg.guide?.en || cfg.name;
+
+      const card = [
+        `✨ ${B(toAZStyle(cfg.name))} ✨`,
+        `📝 Description: ${desc}`,
+        `📂 Category: ${cfg.category || "Misc"}`,
+        `🔤 Aliases: ${aliasesList}`,
+        `🛡️ Role: ${roleMap[cfg.role] || "Unknown"} | ⏱️ Cooldown: ${cfg.countDown || 1}s`,
+        `🚀 Version: ${cfg.version || "1.0"} | 👨‍💻 Author: Kyle`,
+        `💡 Usage: •${B(toAZStyle(usage))}`,
+        `🔧 Options: •help ${B(toAZStyle(cfg.name.toLowerCase()))} [-u | -i | -a | -b]`
+      ].join("\n");
+
+      return message.reply({ body: card, attachment: await global.utils.getStreamFromURL(avatar) });
+
+    } catch(err) {
+      console.error("HELP CMD ERROR:", err);
+      await message.reply(`⚠️ Error: ${err.message || err}`);
+    }
+  }
+};
